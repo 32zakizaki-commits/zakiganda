@@ -1,0 +1,7 @@
+{
+  "name": "NewsSync - Subtitle Semantic News Picture Engine",
+  "description": "2-Stage AI & NLP Engine that groups YouTube subtitles into coherent semantic idea paragraphs and automatically pairs them with high-resolution news imagery from global and Korean outlets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

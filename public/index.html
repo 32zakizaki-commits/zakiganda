@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NewsSync Korea - YouTube Subtitle Person News Picture Engine</title>
+  <meta name="description" content="Groups YouTube subtitles about South Korea into semantic idea paragraphs and automatically pairs each person with their verified high-resolution news picture.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              bg: '#0d1117',
+              card: '#161b22',
+              cardHover: '#1c2128',
+              border: '#30363d',
+              accent: '#38bdf8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #0d1117;
+      color: #e6edf3;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#0d1117] text-slate-100 flex flex-col selection:bg-sky-500 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-[#0d1117]/95 backdrop-blur-md border-b border-[#30363d] px-6 py-3.5">
+    <div class="max-w-[1600px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 via-sky-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-bold text-white tracking-tight">NewsSync Korea</h1>
+            <span class="text-[11px] font-medium tracking-wide uppercase px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">Person-First NLP Engine</span>
+          </div>
+          <p class="text-xs text-slate-400">YouTube Subtitle Semantic Grouping & Person News Picture Alignment (Target: South Korea)</p>
+        </div>
+      </div>
+
+      <!-- Quick Metrics & Export -->
+      <div class="flex items-center gap-2">
+        <div id="statsContainer" class="hidden items-center gap-3 text-xs text-slate-400 mr-2 border-r border-[#30363d] pr-4">
+          <span><strong id="statParagraphs" class="font-mono text-slate-200">0</strong> Ideas</span>
+          <span>·</span>
+          <span><strong id="statDuration" class="font-mono text-slate-200">00:00</strong> Duration</span>
+        </div>
+        <button onclick="exportStoryboard()" class="px-3 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-xs font-medium text-slate-200 transition-colors">
+          Export Storyboard
+        </button>
+        <button onclick="exportJSON()" class="px-3 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-xs font-medium text-emerald-400 transition-colors">
+          Export JSON
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+
+    <!-- Input & Controls Section -->
+    <section class="bg-[#161b22] border border-[#30363d] rounded-xl p-5 shadow-2xl">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#30363d]">
+        <div>
+          <h2 class="text-sm font-semibold text-white uppercase tracking-wider">YouTube Subtitle Input & Presets (Target: South Korea)</h2>
+          <p class="text-xs text-slate-400 mt-0.5">When a paragraph talks about a person (Rhyu Si-min, Choo Mi-ae, Yoon, Han, Lee, etc.), it automatically extracts that person's verified news picture</p>
+        </div>
+
+        <!-- 1-Click English Presets for South Korea -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-xs font-medium text-slate-400 mr-1">Presets:</span>
+          <button onclick="loadPreset('factions')" class="px-2.5 py-1 rounded-md text-xs font-medium bg-[#0d1117] hover:bg-[#21262d] text-amber-300 hover:text-white border border-amber-500/40 transition-colors">
+            🔥 Party Factions (Rhyu · Choo · Kim Min-seok)
+          </button>
+          <button onclick="loadPreset('politics')" class="px-2.5 py-1 rounded-md text-xs font-medium bg-[#0d1117] hover:bg-[#21262d] text-slate-300 hover:text-white border border-[#30363d] transition-colors">
+            🏛️ Leaders (Yoon · Han · Lee)
+          </button>
+          <button onclick="loadPreset('semiconductor')" class="px-2.5 py-1 rounded-md text-xs font-medium bg-[#0d1117] hover:bg-[#21262d] text-slate-300 hover:text-white border border-[#30363d] transition-colors">
+            ⚡ Tech (Lee Jae-yong · Chey · Jensen)
+          </button>
+          <button onclick="loadPreset('diplomacy')" class="px-2.5 py-1 rounded-md text-xs font-medium bg-[#0d1117] hover:bg-[#21262d] text-slate-300 hover:text-white border border-[#30363d] transition-colors">
+            🌐 Diplomacy (Trump · Yoon · Biden)
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
+        <!-- Subtitle Textarea -->
+        <div class="lg:col-span-7 flex flex-col gap-3">
+          <div class="relative rounded-lg border border-[#30363d] bg-[#0d1117]">
+            <textarea id="subtitleInput" rows="7" placeholder="Paste YouTube news subtitles in English about South Korea (.srt, .vtt, or [01:23] transcripts)..." class="w-full bg-transparent p-4 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none resize-none leading-relaxed"></textarea>
+            <div class="flex items-center justify-between px-3 py-2 bg-[#161b22]/90 border-t border-[#30363d] rounded-b-lg">
+              <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#21262d] hover:bg-[#30363d] text-[11px] font-medium text-slate-300 hover:text-white transition-colors">
+                <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                <span>Upload .SRT / .VTT file</span>
+                <input type="file" id="fileUpload" accept=".srt,.vtt,.txt" class="hidden" onchange="handleFile(this.files[0])">
+              </label>
+              <button onclick="clearInput()" class="text-[11px] text-slate-400 hover:text-rose-400 transition-colors">Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="lg:col-span-5 flex flex-col justify-between gap-4 bg-[#0d1117] p-4 rounded-lg border border-[#30363d]">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-xs font-semibold text-slate-200">Paragraph Grouping Sensitivity</label>
+              <span id="sensitivityBadge" class="text-[11px] font-mono text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">By Idea Block (15-30s)</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5 text-center">
+              <button type="button" onclick="setSensitivity('sentence')" id="btnSensSentence" class="p-2 rounded border border-[#30363d] bg-[#161b22] text-xs font-medium text-slate-400">By Sentence</button>
+              <button type="button" onclick="setSensitivity('idea_block')" id="btnSensIdea" class="p-2 rounded border border-sky-500 bg-sky-950/40 text-xs font-semibold text-sky-300">By Idea Block</button>
+              <button type="button" onclick="setSensitivity('fixed_window')" id="btnSensFixed" class="p-2 rounded border border-[#30363d] bg-[#161b22] text-xs font-medium text-slate-400">30s Fixed</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-semibold text-slate-200 mb-2 block">Target News Outlets</label>
+            <div class="grid grid-cols-4 gap-1 text-center">
+              <button type="button" onclick="setPublisher('korea')" id="pubKorea" class="px-2 py-1.5 rounded text-[11px] font-medium border border-sky-500 bg-sky-950/40 text-sky-200">Yonhap / Korea</button>
+              <button type="button" onclick="setPublisher('all')" id="pubAll" class="px-2 py-1.5 rounded text-[11px] font-medium border border-[#30363d] bg-[#161b22] text-slate-400">All Sources</button>
+              <button type="button" onclick="setPublisher('global')" id="pubGlobal" class="px-2 py-1.5 rounded text-[11px] font-medium border border-[#30363d] bg-[#161b22] text-slate-400">Global</button>
+              <button type="button" onclick="setPublisher('aggregators')" id="pubAgg" class="px-2 py-1.5 rounded text-[11px] font-medium border border-[#30363d] bg-[#161b22] text-slate-400">Aggregators</button>
+            </div>
+          </div>
+
+          <button onclick="processSubtitles()" class="w-full py-2.5 px-4 rounded-lg font-semibold text-xs uppercase tracking-wider bg-gradient-to-r from-sky-500 via-indigo-500 to-emerald-500 text-white shadow-lg shadow-sky-500/20 transition-all flex items-center justify-center gap-2">
+            <span>Extract Semantic Ideas & Align Person News Pictures</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Timeline Track -->
+    <section id="timelineSection" class="hidden bg-[#161b22] border border-[#30363d] rounded-xl p-4 shadow-xl">
+      <div class="flex items-center justify-between pb-3 border-b border-[#30363d] text-xs">
+        <div class="flex items-center gap-2 font-mono">
+          <span class="text-sky-400 font-bold">Video Timeline Track</span>
+          <span class="text-slate-600">|</span>
+          <span id="timelineDuration" class="text-slate-300">00:00 / 00:00</span>
+        </div>
+        <span class="text-slate-400">Click any block to jump to subtitle card</span>
+      </div>
+      <div id="timelineBlocks" class="h-10 w-full bg-[#0d1117] rounded-lg border border-[#30363d] mt-3 flex overflow-hidden"></div>
+    </section>
+
+    <!-- Results Section -->
+    <section id="resultsSection" class="space-y-4"></section>
+  </main>
+
+  <!-- Zoom Modal -->
+  <div id="zoomModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" onclick="closeZoom()">
+    <div class="relative max-w-5xl w-full bg-[#161b22] border border-[#30363d] rounded-2xl overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[#30363d] bg-[#0d1117]">
+        <div class="flex items-center gap-2">
+          <span id="zoomIndex" class="font-mono text-xs font-bold text-sky-400">#1</span>
+          <span id="zoomDuration" class="font-mono text-xs text-amber-400">00:00 - 00:25 (25s)</span>
+          <span id="zoomOutlet" class="text-xs text-emerald-400 font-medium">Yonhap News (Korea)</span>
+        </div>
+        <button onclick="closeZoom()" class="text-slate-400 hover:text-white p-1">✕</button>
+      </div>
+      <div class="aspect-video w-full bg-black flex items-center justify-center">
+        <img id="zoomImg" src="" alt="News Image" class="w-full h-full object-contain">
+      </div>
+      <div class="p-5 bg-[#0d1117] border-t border-[#30363d] space-y-2">
+        <h3 id="zoomTitle" class="text-sm font-semibold text-white"></h3>
+        <p id="zoomSource" class="text-xs text-slate-400"></p>
+        <p id="zoomSubtitle" class="text-xs text-slate-300 bg-[#161b22] p-3 rounded border border-[#30363d]"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentSensitivity = 'idea_block';
+    let currentPublisher = 'korea';
+    let processedParagraphs = [];
+
+    const PRESETS = {
+      factions: `[00:00] Not a single person in the pro-Seok faction understood Writer Rhyu Si-min's concerns.
+[00:05] The issue of the "anti-Seok" faction's criticism was raised; they claimed that a stone never found its way into the shoes of the president whom the people elected.
+[00:13] They argued that pointing a gun at one's own side is an act aiding the enemy. Who is the one pointing a gun internally right now? Isn't it the pro-Seok faction?
+[00:29] Now, given the mention of a stone in the shoe, it appears the remark was aimed at Writer Rhyu Si-min. Even setting aside past attacks, the people attacking Writer Rhyu are committing an act aiding the enemy.
+[01:10] Looking back at the recent local elections, the "Team Jung Chung-rae and Rhyu Si-min" and the pro-Seok faction—who aimed their guns at General Choo Mi-ae—committed outrages.
+[01:32] This is about stalling for the sake of the Jung Chung-rae faction, engaging in self-serving politics, and attacking anyone who questions the Lee Jae-myung camp.
+[01:54] When Kim Min-seok raised issues regarding personnel disclosures and directed comments at Rep. Kim Yong-min, Kim Min-seok urged the President to voluntarily resign.
+[02:31] You Si-min called it "harassment"—feeling like he was being mocked. Yet they just keep bashing You Si-min.
+[03:27] The moment the division became serious was when Kim Min-seok labeled them "Shincheonji". The person who really caused the division wasn't Writer Rhyu Si-min, but Kim Min-seok.
+[04:54] Kim Sang-wook is attacking Minister Choo Mi-ae. That is precisely the kind of internal attack we are talking about. Minister Choo Mi-ae recently voiced sharp criticism.
+[06:34] Minister Choo is a former Minister of Justice; back then, she knew Kim Ji-young well and said she isn't qualified.
+[07:43] They have mobilized everyone to attack writer Rhyu Si-min—the "General" backing Choo Mi-ae. Meanwhile, Lee Jae-myung talked about placing prosecutorial reform within the Ministry of Justice.`,
+      politics: `1\n00:00:01,000 --> 00:00:07,500\nGood evening from Seoul. President Yoon Suk Yeol delivered a major policy address today at the Yongsan presidential office.\n\n2\n00:00:08,200 --> 00:00:15,000\nPresident Yoon Suk Yeol emphasized that government resources will be fully mobilized to support national semiconductor growth and livelihood welfare.\n\n3\n00:00:16,500 --> 00:00:23,000\nResponding at the National Assembly in Yeouido, ruling People Power Party leader Han Dong-hoon pledged comprehensive legislative backing.\n\n4\n00:00:24,000 --> 00:00:31,000\nHan Dong-hoon urged lawmakers during a supreme council meeting to prioritize public-centered economic reforms and swift policy execution.\n\n5\n00:00:32,500 --> 00:00:39,500\nMeanwhile, main opposition Democratic Party leader Lee Jae-myung held a press conference calling for urgent economic stimulus measures.\n\n6\n00:00:40,500 --> 00:00:48,000\nLee Jae-myung stressed that bipartisan dialogue and parliamentary cooperation are crucial to protect ordinary citizens and local businesses.`,
+      semiconductor: `1\n00:00:02,000 --> 00:00:08,500\nSamsung Electronics Executive Chairman Lee Jae-yong conducted an on-site inspection of the Pyeongtaek mega semiconductor campus today.\n\n2\n00:00:09,200 --> 00:00:16,500\nLee Jae-yong emphasized to engineers that bold upfront investments in next-generation HBM memory are essential to maintain Korea's tech supremacy.\n\n3\n00:00:18,000 --> 00:00:25,000\nSpeaking at the KCCI Global AI Summit in Seoul, SK Group Chairman Chey Tae-won unveiled accelerated mass-production roadmaps for HBM3e chips.\n\n4\n00:00:26,000 --> 00:00:33,000\nChey Tae-won highlighted expanding global partnerships to supply high-bandwidth memory for next-generation AI supercomputing clusters.\n\n5\n00:00:34,500 --> 00:00:42,000\nIn Silicon Valley, Nvidia CEO Jensen Huang commended South Korean memory manufacturers, calling them irreplaceable pillars of the worldwide AI ecosystem.`,
+      diplomacy: `1\n00:00:02,000 --> 00:00:08,500\nUS President Donald Trump announced new bilateral trade and tariff frameworks during a White House press briefing.\n\n2\n00:00:09,500 --> 00:00:16,000\nDonald Trump referenced ongoing Korean investments in American manufacturing, signaling reciprocal economic dialogue with Seoul.\n\n3\n00:00:17,500 --> 00:00:24,500\nIn response, President Yoon Suk Yeol convened an emergency economic and national security session in Seoul to safeguard core industries.\n\n4\n00:00:26,000 --> 00:00:33,000\nFormer US President Joe Biden also previously highlighted the unbreakable security deterrence treaty and supply chain pact between the two nations.`
+    };
+
+    const PERSON_DB = [
+      {
+        id: 'rhyu-si-min',
+        names: ['rhyu si-min', 'rhyu si min', 'writer rhyu', 'rhyu', 'you si-min', 'you si min', 'yoo si-min', '유시민', '유시민 작가'],
+        images: [
+          { url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b7/160824_Rhyu_Si-min.png/330px-160824_Rhyu_Si-min.png', title: 'Writer Rhyu Si-min (유시민 작가) political commentary on Democratic Party', source: 'National Press Pool / Yonhap News', outlet: 'Yonhap News (연합뉴스)', person: 'Writer Rhyu Si-min (유시민 작가)' }
+        ]
+      },
+      {
+        id: 'choo-mi-ae',
+        names: ['choo mi-ae', 'choo mi ae', 'minister choo', 'general choo', 'choo', '추미애', '추미애 의원'],
+        images: [
+          { url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ce/Choo_Mi-ae%27s_Portrait_%282026.5%29.png/330px-Choo_Mi-ae%27s_Portrait_%282026.5%29.png', title: 'Former Justice Minister Choo Mi-ae (추미애 의원/전 장관) remarks', source: 'National Assembly Press Corps / MBC News', outlet: 'MBC News (Korea)', person: 'Choo Mi-ae (추미애 전 장관/의원)' }
+        ]
+      },
+      {
+        id: 'kim-min-seok',
+        names: ['kim min-seok', 'kim min seok', 'pro-seok', 'anti-seok', 'min-ti', 'kim min-ti', 'minty', '김민석', '김민석 의원'],
+        images: [
+          { url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Kim_Min-seok_in_April_2026.jpg/330px-Kim_Min-seok_in_April_2026.jpg', title: 'Democratic Party Supreme Council Member Kim Min-seok (김민석 최고위원)', source: 'National Assembly Press Pool / KBS News', outlet: 'KBS News (Korea)', person: 'Kim Min-seok (김민석 최고위원)' }
+        ]
+      },
+      {
+        id: 'jung-chung-rae',
+        names: ['jung chung-rae', 'jung chung rae', 'chung-rae', 'jung chungrae', 'team jung chung-rae', '정청래', '정청래 의원'],
+        images: [
+          { url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Jung_Chung-rae%27s_Portrait_%282026.6%29.png/330px-Jung_Chung-rae%27s_Portrait_%282026.6%29.png', title: 'National Assembly Judiciary Committee Chair Jung Chung-rae (정청래 위원장)', source: 'National Assembly Press Corps / Yonhap News', outlet: 'Yonhap News (연합뉴스)', person: 'Jung Chung-rae (정청래 위원장)' }
+        ]
+      },
+      {
+        id: 'kim-sang-wook',
+        names: ['kim sang-wook', 'kim sang wook', 'sang-wook', '김상욱'],
+        images: [
+          { url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3a/Kim_Sang-wook_%28politician%29.jpg/330px-Kim_Sang-wook_%28politician%29.jpg', title: 'National Assembly Lawmaker Kim Sang-wook (김상욱 의원) committee remarks', source: 'National Assembly Press Pool / SBS News', outlet: 'SBS News (Korea)', person: 'Kim Sang-wook (김상욱 의원)' }
+        ]
+      },
+      {
+        id: 'yoon-suk-yeol',
+        names: ['yoon suk yeol', 'yoon suk-yeol', 'president yoon', 'yoon', 'suk-yeol', 'suk yeol', 'yoon sukyeol', '윤석열'],
+        images: [
+          { url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6a/South_Korea_President_Yoon_Suk_Yeol_portrait.jpg/330px-South_Korea_President_Yoon_Suk_Yeol_portrait.jpg', title: 'President Yoon Suk Yeol official portrait & national policy address', source: 'Presidential Press Pool / Yonhap News', outlet: 'Yonhap News (연합뉴스)', person: 'President Yoon Suk Yeol (윤석열 대통령)' },
+          { url: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80', title: 'President Yoon Suk Yeol presides over cabinet meeting at Yongsan office', source: 'KBS World News Pool', outlet: 'KBS News (Korea)', person: 'President Yoon Suk Yeol (윤석열 대통령)' }
+        ]
+      },
+      {
+        id: 'han-dong-hoon',
+        names: ['han dong-hoon', 'han dong hoon', 'leader han', 'han donghoon', 'dong-hoon', 'han dong-hun', '한동훈'],
+        images: [
+          { url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f3/Han_dong_hoon_2026.png/330px-Han_dong_hoon_2026.png', title: 'People Power Party Leader Han Dong-hoon chairs supreme council meeting at National Assembly', source: 'National Assembly Press Corps / Yonhap News', outlet: 'Yonhap News (연합뉴스)', person: 'Han Dong-hoon (한동훈 대표)' },
+          { url: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80', title: 'Han Dong-hoon briefs journalists on legislative reform agenda in Yeouido', source: 'Korea Herald Press Pool', outlet: 'Korea Herald', person: 'Han Dong-hoon (한동훈 대표)' }
+        ]
+      },
+      {
+        id: 'lee-jae-myung',
+        names: ['lee jae-myung', 'lee jae myung', 'leader lee', 'lee jaemyung', 'jae-myung', 'president-to-be jae', '이재명'],
+        images: [
+          { url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/5/59/President_Lee_Jae_Myung_20260306.jpg/330px-President_Lee_Jae_Myung_20260306.jpg', title: 'Democratic Party Leader Lee Jae-myung speaks at parliamentary press conference', source: 'National Assembly Press Pool / MBC News', outlet: 'MBC News (Korea)', person: 'Lee Jae-myung (이재명 대표)' },
+          { url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=1200&q=80', title: 'Lee Jae-myung outlines economic stimulus and livelihood welfare proposals', source: 'SBS News / Yonhap Wire', outlet: 'SBS News (Korea)', person: 'Lee Jae-myung (이재명 대표)' }
+        ]
+      },
+      {
+        id: 'lee-jae-yong',
+        names: ['lee jae-yong', 'jay y. lee', 'lee jae yong', 'samsung chairman', 'jay y lee', 'jy lee', '이재용'],
+        images: [
+          { url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/d/de/Lee_Jae-yong_in_2016.jpg/330px-Lee_Jae-yong_in_2016.jpg', title: 'Samsung Electronics Executive Chairman Lee Jae-yong inspects Pyeongtaek chip campus', source: 'Samsung Newsroom / Yonhap News', outlet: 'Yonhap News (연합뉴스)', person: 'Lee Jae-yong (Jay Y. Lee / 이재용 회장)' }
+        ]
+      },
+      {
+        id: 'chey-tae-won',
+        names: ['chey tae-won', 'chey tae won', 'sk chairman', 'chey taewon', 'tony chey', '최태원'],
+        images: [
+          { url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a0/Korea_Portuguese_Business_Forum_01_%28cropped%29.jpg/330px-Korea_Portuguese_Business_Forum_01_%28cropped%29.jpg', title: 'SK Group Chairman Chey Tae-won presents AI semiconductor vision at KCCI Global Summit', source: 'Korea Chamber of Commerce / Maeil Business', outlet: 'Maeil Business (Korea)', person: 'Chey Tae-won (최태원 회장)' }
+        ]
+      },
+      {
+        id: 'jensen-huang',
+        names: ['jensen huang', 'jensen', 'nvidia ceo', '젠슨 황'],
+        images: [
+          { url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e6/Jen-Hsun_Huang_2025.jpg/330px-Jen-Hsun_Huang_2025.jpg', title: 'Nvidia CEO Jensen Huang commends South Korean memory manufacturers for global AI ecosystem', source: 'NVIDIA Press / Yonhap Tech Wire', outlet: 'Yonhap News (연합뉴스)', person: 'Jensen Huang (젠슨 황)' }
+        ]
+      },
+      {
+        id: 'donald-trump',
+        names: ['donald trump', 'president trump', 'trump', '도널드 트럼프', '트럼프'],
+        images: [
+          { url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/1/16/Official_Presidential_Portrait_of_President_Donald_J._Trump_%282025%29.jpg/330px-Official_Presidential_Portrait_of_President_Donald_J._Trump_%282025%29.jpg', title: 'US President Donald Trump announces bilateral trade and tariff frameworks for Korea and allies', source: 'White House Official Photo / Reuters Wire', outlet: 'Reuters (Global)', person: 'Donald Trump (도널드 트럼프)' }
+        ]
+      },
+      {
+        id: 'joe-biden',
+        names: ['joe biden', 'president biden', 'biden', '조 바이든', '바이든'],
+        images: [
+          { url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/6/68/Joe_Biden_presidential_portrait.jpg/330px-Joe_Biden_presidential_portrait.jpg', title: 'Former US President Joe Biden previously reaffirmed Korea-US security and supply chain pact', source: 'AP News / White House Pool', outlet: 'AP News', person: 'Joe Biden (조 바이든)' }
+        ]
+      }
+    ];
+
+    function loadPreset(id) {
+      document.getElementById('subtitleInput').value = PRESETS[id] || '';
+      processSubtitles();
+    }
+
+    function clearInput() {
+      document.getElementById('subtitleInput').value = '';
+      document.getElementById('resultsSection').innerHTML = '';
+      document.getElementById('timelineSection').classList.add('hidden');
+      document.getElementById('statsContainer').classList.add('hidden');
+      processedParagraphs = [];
+    }
+
+    function handleFile(file) {
+      if (!file) return;
+      const r = new FileReader();
+      r.onload = (e) => {
+        document.getElementById('subtitleInput').value = e.target.result;
+        processSubtitles();
+      };
+      r.readAsText(file);
+    }
+
+    function setSensitivity(s) {
+      currentSensitivity = s;
+      document.getElementById('sensitivityBadge').innerText = s === 'idea_block' ? 'By Idea Block (15-30s)' : s === 'sentence' ? 'By Sentence' : '30s Fixed';
+      document.getElementById('btnSensSentence').className = s === 'sentence' ? 'p-2 rounded border border-sky-500 bg-sky-950/40 text-xs font-semibold text-sky-300' : 'p-2 rounded border border-[#30363d] bg-[#161b22] text-xs font-medium text-slate-400';
+      document.getElementById('btnSensIdea').className = s === 'idea_block' ? 'p-2 rounded border border-sky-500 bg-sky-950/40 text-xs font-semibold text-sky-300' : 'p-2 rounded border border-[#30363d] bg-[#161b22] text-xs font-medium text-slate-400';
+      document.getElementById('btnSensFixed').className = s === 'fixed_window' ? 'p-2 rounded border border-sky-500 bg-sky-950/40 text-xs font-semibold text-sky-300' : 'p-2 rounded border border-[#30363d] bg-[#161b22] text-xs font-medium text-slate-400';
+      if (document.getElementById('subtitleInput').value.trim()) processSubtitles();
+    }
+
+    function setPublisher(p) {
+      currentPublisher = p;
+      ['pubKorea', 'pubAll', 'pubGlobal', 'pubAgg'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.className = 'px-2 py-1.5 rounded text-[11px] font-medium border border-[#30363d] bg-[#161b22] text-slate-400';
+      });
+      const activeEl = document.getElementById(p === 'korea' ? 'pubKorea' : p === 'all' ? 'pubAll' : p === 'global' ? 'pubGlobal' : 'pubAgg');
+      if (activeEl) activeEl.className = 'px-2 py-1.5 rounded text-[11px] font-medium border border-sky-500 bg-sky-950/40 text-sky-200';
+      if (document.getElementById('subtitleInput').value.trim()) processSubtitles();
+    }
+
+    function parseSubtitles(text) {
+      const cues = [];
+      const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      if (normalized.includes('-->')) {
+        const blocks = normalized.split(/\n\s*\n/);
+        let id = 1;
+        for (const block of blocks) {
+          const lines = block.trim().split('\n');
+          const timeIdx = lines.findIndex(l => l.includes('-->'));
+          if (timeIdx !== -1) {
+            const [sStr, eStr] = lines[timeIdx].split('-->').map(s => s.trim().split(' ')[0]);
+            const s = parseTimeToSec(sStr);
+            const e = parseTimeToSec(eStr);
+            const cueText = lines.slice(timeIdx + 1).map(l => l.replace(/<[^>]*>/g, '').trim()).join(' ');
+            if (cueText) cues.push({ id: id++, start: s, end: Math.max(e, s + 1), text: cueText });
+          }
+        }
+      } else {
+        const lines = normalized.split('\n').filter(Boolean);
+        const bracketRegex = /(?:\[|\()(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d{1,3})?)(?:\]|\))\s*([^\n\r]+)/;
+        let curTime = 0;
+        let id = 1;
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          const match = line.match(bracketRegex);
+          if (match) {
+            const s = parseTimeToSec(match[1]);
+            const nextMatch = lines[i + 1]?.trim().match(bracketRegex);
+            const e = nextMatch ? parseTimeToSec(nextMatch[1]) : s + 4;
+            cues.push({ id: id++, start: s, end: Math.max(e, s + 2), text: match[2].trim() });
+          } else {
+            const dur = Math.max(4, line.split(' ').length * 0.4);
+            cues.push({ id: id++, start: curTime, end: curTime + dur, text: line });
+            curTime += dur + 0.3;
+          }
+        }
+      }
+      return cues;
+    }
+
+    function parseTimeToSec(str) {
+      if (!str) return 0;
+      const parts = str.replace(',', '.').split(':');
+      if (parts.length === 3) return parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
+      if (parts.length === 2) return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+      return parseFloat(parts[0]) || 0;
+    }
+
+    function formatTime(secs) {
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60);
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function extractPerson(text) {
+      const lower = text.toLowerCase();
+      for (const p of PERSON_DB) {
+        for (const name of p.names) {
+          if (/[가-힣]/.test(name)) {
+            if (text.includes(name)) return p;
+          } else {
+            const regex = new RegExp('\\b' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+            if (regex.test(lower)) {
+              return p;
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    function processSubtitles() {
+      const raw = document.getElementById('subtitleInput').value;
+      if (!raw.trim()) return;
+      const cues = parseSubtitles(raw);
+      if (cues.length === 0) return;
+
+      const paragraphs = [];
+      let cur = [];
+      let idx = 1;
+
+      for (let i = 0; i < cues.length; i++) {
+        const cue = cues[i];
+        if (cur.length === 0) {
+          cur.push(cue);
+          continue;
+        }
+
+        const firstCue = cur[0];
+        const prevCue = cur[cur.length - 1];
+        const accumulatedDuration = prevCue.end - firstCue.start;
+        const gap = cue.start - prevCue.end;
+        const endsSentence = /[.?!]["']?$/.test(prevCue.text.trim());
+
+        let split = false;
+        if (currentSensitivity === 'sentence') {
+          if (endsSentence || accumulatedDuration >= 10 || gap >= 1.5) split = true;
+        } else if (currentSensitivity === 'fixed_window') {
+          if (accumulatedDuration >= 28) split = true;
+        } else {
+          // Idea Block (14-30s)
+          if (accumulatedDuration >= 14 && (gap >= 1.0 || cur.length >= 3 || endsSentence)) split = true;
+          else if (accumulatedDuration >= 30) split = true;
+          else if (gap >= 2.5 && accumulatedDuration >= 8) split = true;
+        }
+
+        if (split) {
+          const s = firstCue.start;
+          const e = prevCue.end;
+          const d = Math.max(1, Math.round(e - s));
+          paragraphs.push({ id: `p-${idx}`, index: idx++, start: s, end: e, duration: d, durationLabel: `${formatTime(s)} - ${formatTime(e)} (${d}s)`, text: cur.map(c => c.text).join(' ').trim() });
+          cur = [cue];
+        } else {
+          cur.push(cue);
+        }
+      }
+
+      if (cur.length > 0) {
+        const s = cur[0].start;
+        const e = cur[cur.length - 1].end;
+        const d = Math.max(1, Math.round(e - s));
+        paragraphs.push({ id: `p-${idx}`, index: idx++, start: s, end: e, duration: d, durationLabel: `${formatTime(s)} - ${formatTime(e)} (${d}s)`, text: cur.map(c => c.text).join(' ').trim() });
+      }
+
+      const personOccurrenceMap = {};
+
+      processedParagraphs = paragraphs.map(p => {
+        const personMatch = extractPerson(p.text);
+        let query = 'South Korea Political News';
+        let image;
+
+        if (personMatch) {
+          const personId = personMatch.id;
+          const count = personOccurrenceMap[personId] || 0;
+          personOccurrenceMap[personId] = count + 1;
+          const imgList = personMatch.images;
+          const selectedImg = imgList[count % imgList.length];
+          query = selectedImg.person;
+          image = selectedImg;
+        } else {
+          const words = p.text.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3 && !['this', 'that', 'with', 'from', 'they', 'have', 'been', 'today', 'news', 'will', 'also', 'good', 'evening', 'isn’t', 'there', 'their'].includes(w.toLowerCase()));
+          query = words.slice(0, 3).join(' ') || 'South Korea Special Coverage';
+          image = {
+            url: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80',
+            title: `Special Coverage: ${query} (Seoul Newsroom)`,
+            source: 'Yonhap News Agency / Broadcast Pool',
+            outlet: 'Yonhap News (연합뉴스)',
+            person: query
+          };
+        }
+
+        return { ...p, query, image };
+      });
+
+      renderTimeline(processedParagraphs);
+      renderCards(processedParagraphs);
+
+      document.getElementById('statsContainer').classList.remove('hidden');
+      document.getElementById('statsContainer').classList.add('flex');
+      document.getElementById('statParagraphs').innerText = processedParagraphs.length;
+      document.getElementById('statDuration').innerText = formatTime(processedParagraphs[processedParagraphs.length - 1].end);
+    }
+
+    function renderTimeline(paragraphs) {
+      const section = document.getElementById('timelineSection');
+      const container = document.getElementById('timelineBlocks');
+      section.classList.remove('hidden');
+      container.innerHTML = '';
+      const total = paragraphs[paragraphs.length - 1].end;
+      document.getElementById('timelineDuration').innerText = `00:00 / ${formatTime(total)}`;
+
+      paragraphs.forEach(p => {
+        const pct = ((p.end - p.start) / total) * 100;
+        const div = document.createElement('div');
+        div.style.width = `${pct}%`;
+        div.className = 'h-full border-r border-[#30363d] bg-sky-950/70 hover:bg-sky-900 cursor-pointer flex flex-col justify-center px-1 text-[10px] truncate text-sky-200';
+        div.title = `[${p.durationLabel}] ${p.query}`;
+        div.innerHTML = `<span class="truncate font-semibold">#${p.index} ${p.query}</span>`;
+        div.onclick = () => { document.getElementById(p.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+        container.appendChild(div);
+      });
+    }
+
+    function renderCards(paragraphs) {
+      const section = document.getElementById('resultsSection');
+      section.innerHTML = '';
+
+      paragraphs.forEach(p => {
+        const card = document.createElement('article');
+        card.id = p.id;
+        card.className = 'bg-[#161b22] border border-[#30363d] rounded-xl p-5 shadow-lg transition-all hover:border-slate-500';
+        card.innerHTML = `
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div class="lg:col-span-7 flex flex-col justify-between gap-4">
+              <div>
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-[#0d1117] text-slate-300 border border-[#30363d] flex items-center justify-center text-xs font-mono font-bold">${p.index}</span>
+                    <div class="px-3 py-1 rounded bg-[#0d1117] border border-[#30363d] text-amber-400 font-mono text-xs font-semibold">
+                      Duration: ${p.durationLabel}
+                    </div>
+                  </div>
+                  <span class="text-[11px] text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                    Person: ${p.query}
+                  </span>
+                </div>
+                <div class="space-y-1">
+                  <div class="text-[11px] font-semibold text-slate-500 uppercase">Subtitle Idea Segment</div>
+                  <p class="text-sm font-normal text-slate-100 leading-relaxed">${p.text}</p>
+                </div>
+              </div>
+              <div class="pt-3 border-t border-[#30363d]/60 flex items-center gap-2 text-xs">
+                <span class="text-slate-500 text-[11px]">Matched Query:</span>
+                <span class="font-mono text-xs text-sky-300 font-semibold bg-[#0d1117] px-2.5 py-0.5 rounded border border-sky-500/30">"${p.query}"</span>
+              </div>
+            </div>
+            <div class="lg:col-span-5 flex flex-col justify-between gap-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase">News Picture</span>
+                <span class="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">${p.image.outlet}</span>
+              </div>
+              <div onclick="openZoom('${p.id}')" class="relative aspect-video w-full rounded-lg overflow-hidden border border-[#30363d] bg-black cursor-pointer group">
+                <img src="${p.image.url}" alt="${p.query}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <span class="px-3 py-1.5 rounded-full bg-black/80 text-white text-xs font-medium border border-white/20">Click to Zoom</span>
+                </div>
+                <div class="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black/90 to-transparent">
+                  <p class="text-[11px] text-white truncate font-medium">${p.image.title}</p>
+                  <p class="text-[10px] text-slate-400 truncate">Source: ${p.image.source}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        section.appendChild(card);
+      });
+    }
+
+    function openZoom(id) {
+      const p = processedParagraphs.find(item => item.id === id);
+      if (!p) return;
+      document.getElementById('zoomIndex').innerText = `#${p.index}`;
+      document.getElementById('zoomDuration').innerText = p.durationLabel;
+      document.getElementById('zoomOutlet').innerText = p.image.outlet;
+      document.getElementById('zoomImg').src = p.image.url;
+      document.getElementById('zoomTitle').innerText = p.image.title;
+      document.getElementById('zoomSource').innerText = `Source: ${p.image.source}`;
+      document.getElementById('zoomSubtitle').innerText = p.text;
+      document.getElementById('zoomModal').classList.remove('hidden');
+    }
+
+    function closeZoom() {
+      document.getElementById('zoomModal').classList.add('hidden');
+    }
+
+    function exportJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(processedParagraphs, null, 2));
+      const dl = document.createElement('a');
+      dl.setAttribute("href", dataStr);
+      dl.setAttribute("download", "korea-newssync.json");
+      dl.click();
+    }
+
+    function exportStoryboard() {
+      let edl = `# NEWSSYNC KOREA VIDEO STORYBOARD\n\n`;
+      processedParagraphs.forEach(p => {
+        edl += `--- [${p.durationLabel}] ---\n`;
+        edl += `PERSON: ${p.query}\n`;
+        edl += `SUBTITLE: ${p.text}\n`;
+        edl += `NEWS PICTURE: ${p.image.url}\n`;
+        edl += `SOURCE: ${p.image.outlet} (${p.image.source})\n\n`;
+      });
+      const blob = new Blob([edl], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const dl = document.createElement('a');
+      dl.href = url;
+      dl.download = "korea-newssync-storyboard.txt";
+      dl.click();
+    }
+
+    window.onload = () => {
+      loadPreset('factions');
+    };
+  </script>
+</body>
+</html>
